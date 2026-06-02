@@ -1,6 +1,6 @@
 // Set this to your production backend URL (e.g., 'http://localhost:5000') if the frontend is hosted separately.
 // Leave it as null if the frontend and backend are served together from the same host.
-const PRODUCTION_BACKEND_URL = "http://localhost:5000";
+const PRODUCTION_BACKEND_URL = "https://legal-hornets-go.loca.lt";
 
 const API_BASE = PRODUCTION_BACKEND_URL 
   ? `${PRODUCTION_BACKEND_URL}/api`
