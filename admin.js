@@ -1,6 +1,12 @@
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000'
-  ? `${window.location.protocol}//${window.location.hostname}:5000/api`
-  : '/api';
+// Set this to your production backend URL (e.g., 'http://localhost:5000') if the frontend is hosted separately.
+// Leave it as null if the frontend and backend are served together from the same host.
+const PRODUCTION_BACKEND_URL = "http://localhost:5000";
+
+const API_BASE = PRODUCTION_BACKEND_URL 
+  ? `${PRODUCTION_BACKEND_URL}/api`
+  : ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000'
+      ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+      : '/api');
 
 // Authentication Wrapper for API Requests
 async function adminFetch(url, options = {}) {
