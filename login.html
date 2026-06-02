@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fort Rosa - Administrative Login</title>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+
+  <!-- Toast Notifications Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Login Card Container -->
+  <div class="card" style="width: 100%; max-width: 420px; margin: 1.5rem; animation: fadeIn 0.5s ease;">
+    
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <a href="index.html" class="logo" style="justify-content: center; font-size: 1.8rem; margin-bottom: 1rem;">
+        <i class="fa-solid fa-hotel"></i>
+        Fort Rosa
+      </a>
+      <h2 style="font-size: 1.3rem; margin-bottom: 0.25rem;">Administrator Authentication</h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted);">Please enter administrative credentials to access backend controls.</p>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" onsubmit="event.preventDefault();">
+      <div class="form-group">
+        <label for="username">Admin Username</label>
+        <div style="position: relative;">
+          <input type="text" id="username" placeholder="Enter username" style="padding-left: 2.75rem;" required>
+          <i class="fa-solid fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-dark);"></i>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div style="position: relative;">
+          <input type="password" id="password" placeholder="Enter password" style="padding-left: 2.75rem; padding-right: 2.75rem;" required>
+          <i class="fa-solid fa-lock" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-dark);"></i>
+          <button type="button" id="btnTogglePassword" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-dark); cursor: pointer;">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="btnLogin">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+      </button>
+
+      <div style="text-align: center; margin-top: 1.5rem;">
+        <a href="bookings.html" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: var(--transition);">
+          <i class="fa-solid fa-arrow-left"></i> Return to Booking Portal
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      let icon = 'fa-circle-info';
+      if (type === 'success') icon = 'fa-circle-check';
+      if (type === 'error') icon = 'fa-circle-xmark';
+      if (type === 'warning') icon = 'fa-triangle-exclamation';
+
+      toast.innerHTML = `
+        <i class="fa-solid ${icon}"></i>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add('active'), 10);
+      setTimeout(() => {
+        toast.classList.remove('active');
+        setTimeout(() => toast.remove(), 350);
+      }, 4000);
+    }
+
+    // Toggle Password Visibility
+    const btnTogglePassword = document.getElementById('btnTogglePassword');
+    const passwordInput = document.getElementById('password');
+    btnTogglePassword.addEventListener('click', () => {
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+      btnTogglePassword.innerHTML = `<i class="fa-solid ${isPassword ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
+    });
+
+    // Handle Form Submit
+    const loginForm = document.getElementById('loginForm');
+    const btnLogin = document.getElementById('btnLogin');
+    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000'
+      ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+      : '/api';
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btnLogin.disabled = true;
+      btnLogin.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Authenticating...';
+
+      const username = document.getElementById('username').value.trim();
+      const password = passwordInput.value;
+
+      try {
+        const res = await fetch(`${API_BASE}/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          showToast('Authentication successful. Redirecting...', 'success');
+          sessionStorage.setItem('adminToken', json.token);
+          setTimeout(() => {
+            window.location.href = 'admin.html';
+          }, 1000);
+        } else {
+          showToast(json.message || 'Invalid credentials.', 'error');
+          btnLogin.disabled = false;
+          btnLogin.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
+        }
+      } catch (error) {
+        showToast('Connection to login server failed.', 'error');
+        btnLogin.disabled = false;
+        btnLogin.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fort Rosa - Administrative Dashboard</title>
+  <script>
+    if (!sessionStorage.getItem('adminToken')) {
+      window.location.href = 'login.html';
+    }
+  </script>
+  <!-- Font Awesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="admin.html" class="logo">
+      <i class="fa-solid fa-gauge-high"></i>
+      Fort Rosa Admin Panel
+    </a>
+    <div class="nav-links">
+      <a href="bookings.html"><i class="fa-solid fa-house"></i> Bookings Portal</a>
+      <a href="admin.html" class="active"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+      <a href="#" id="btnLogout" class="btn-portal" style="background: var(--danger-glow); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.15);"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+  </nav>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Dashboard Container -->
+  <main class="container">
+
+    <header style="margin-bottom: 2rem;">
+      <h1 style="font-size: 2.2rem; margin-bottom: 0.25rem;">Administrative Console</h1>
+      <p style="color: var(--text-muted);">Real-time monitoring of room inventory, student bookings, financial transactions, and occupant allocations.</p>
+    </header>
+
+    <!-- STATS CARDS GRID -->
+    <div class="stats-grid">
+      <!-- Total Rooms Card -->
+      <div class="stat-card">
+        <div class="stat-details">
+          <h3>Total Rooms</h3>
+          <div class="stat-value" id="statRooms">0</div>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-bed"></i></div>
+      </div>
+      <!-- Total Students Card -->
+      <div class="stat-card">
+        <div class="stat-details">
+          <h3>Registered Students</h3>
+          <div class="stat-value" id="statStudents">0</div>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+      </div>
+      <!-- Occupancy Rate Card -->
+      <div class="stat-card">
+        <div class="stat-details">
+          <h3>Occupancy Rate</h3>
+          <div class="stat-value" id="statOccupancy">0%</div>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+      </div>
+      <!-- Total Revenue Card -->
+      <div class="stat-card">
+        <div class="stat-details">
+          <h3>Total Revenue</h3>
+          <div class="stat-value" id="statRevenue">GH₵0.00</div>
+        </div>
+        <div class="stat-icon"><i class="fa-solid fa-dollar-sign"></i></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS CHARTS SECTION -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;" id="chartsContainer">
+      <div class="card" style="padding: 1.5rem;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-primary);"><i class="fa-solid fa-chart-bar"></i> Booking Status Distribution</h3>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="bookingChart"></canvas>
+        </div>
+      </div>
+      <div class="card" style="padding: 1.5rem;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-primary);"><i class="fa-solid fa-chart-pie"></i> Room Occupancy Overview</h3>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="roomChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS BAR -->
+    <div class="tab-container">
+      <button class="tab-btn active" data-tab="bookingsTab"><i class="fa-solid fa-list-check"></i> Bookings (<span id="countBookings">0</span>)</button>
+      <button class="tab-btn" data-tab="roomsTab"><i class="fa-solid fa-hotel"></i> Rooms Management (<span id="countRooms">0</span>)</button>
+      <button class="tab-btn" data-tab="allocationsTab"><i class="fa-solid fa-key"></i> Active Allocations (<span id="countAllocations">0</span>)</button>
+      <button class="tab-btn" data-tab="paymentsTab"><i class="fa-solid fa-receipt"></i> Payments Registry</button>
+      <button class="tab-btn" data-tab="studentsTab"><i class="fa-solid fa-user-graduate"></i> Students</button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB CONTENT: BOOKINGS -->
+    <!-- ========================================== -->
+    <div class="tab-content active" id="bookingsTab">
+      <div class="filter-bar">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="bookingSearchInput" placeholder="Search by student name, ID, or room...">
+        </div>
+        <div>
+          <select id="bookingStatusFilter" style="width: auto; padding: 0.5rem 1rem;">
+            <option value="all">All Booking Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Expired">Expired</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Ref ID</th>
+              <th>Student</th>
+              <th>Room Selection</th>
+              <th>Academic Period</th>
+              <th>Register Date</th>
+              <th>Status</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsTableBody">
+            <tr>
+              <td colspan="7" class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading bookings...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB CONTENT: ROOMS MANAGEMENT -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="roomsTab">
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+        
+        <!-- Room List Table -->
+        <div>
+          <div class="filter-bar">
+            <h3 style="font-size: 1.2rem;">Room Inventories</h3>
+            <select id="roomBlockFilter" style="width: auto; padding: 0.5rem 1rem;">
+              <option value="all">All Blocks</option>
+              <option value="Block A">Block A</option>
+              <option value="Block B">Block B</option>
+            </select>
+          </div>
+          
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Room No</th>
+                  <th>Block</th>
+                  <th>Room Type</th>
+                  <th>Capacity</th>
+                  <th>Cost / Sem</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Remove</th>
+                </tr>
+              </thead>
+              <tbody id="roomsTableBody">
+                <tr>
+                  <td colspan="7" class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading rooms database...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add Room Form Card -->
+        <div class="card">
+          <h3 style="margin-bottom: 1.5rem; color: var(--primary);"><i class="fa-solid fa-plus"></i> Add New Room</h3>
+          <form id="addRoomForm" onsubmit="event.preventDefault();">
+            <div class="form-group">
+              <label for="new_room_number">Room Number *</label>
+              <input type="text" id="new_room_number" placeholder="e.g. A305" required>
+            </div>
+            <div class="form-group">
+              <label for="new_block_name">Building Block *</label>
+              <select id="new_block_name" required>
+                <option value="Block A">Block A (Male)</option>
+                <option value="Block B">Block B (Female)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="new_type_id">Room Category Type *</label>
+              <select id="new_type_id" required>
+                <!-- Filled dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="new_room_status">Initial Status</label>
+              <select id="new_room_status">
+                <option value="Available" selected>Available</option>
+                <option value="Maintenance">Maintenance</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="btnAddRoom">
+              <i class="fa-solid fa-circle-plus"></i> Register Room
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB CONTENT: ACTIVE ALLOCATIONS -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="allocationsTab">
+      <div class="filter-bar">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="allocationsSearchInput" placeholder="Search allocations by name or room...">
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Allocation ID</th>
+              <th>Student Name</th>
+              <th>Student ID</th>
+              <th>Room No</th>
+              <th>Block</th>
+              <th>Style</th>
+              <th>Allocation Date</th>
+              <th style="text-align: right;">Deallocate Room</th>
+            </tr>
+          </thead>
+          <tbody id="allocationsTableBody">
+            <tr>
+              <td colspan="8" class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading active allocations...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB CONTENT: PAYMENTS REGISTRY -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="paymentsTab">
+      <div class="filter-bar">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="paymentsSearchInput" placeholder="Search payments by student or reference...">
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Payment ID</th>
+              <th>Student</th>
+              <th>Ref / ID</th>
+              <th>Booking ID</th>
+              <th>Amount Paid</th>
+              <th>Transaction Ref</th>
+              <th>Method</th>
+              <th>Timestamp</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsTableBody">
+            <tr>
+              <td colspan="9" class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading payments registry...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB CONTENT: STUDENTS DIRECTORY -->
+    <!-- ========================================== -->
+    <div class="tab-content" id="studentsTab">
+      <div class="filter-bar">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="studentsSearchInput" placeholder="Search students index by name or email...">
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Student ID</th>
+              <th>Student Index</th>
+              <th>Full Name</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              <th>Gender</th>
+              <th>Emergency Contact</th>
+            </tr>
+          </thead>
+          <tbody id="studentsTableBody">
+            <tr>
+              <td colspan="7" class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading students...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- JavaScript controller -->
+  <script src="admin.js"></script>
+</body>
+</html>
